@@ -1,46 +1,56 @@
+import pdb
+
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import seaborn as sns
+import pandas as pd
 
-def update_one_generation(pp,pw,ww,k,h,s):
-    new_pp = (pp*pp*k*1*(1-s)
-                +pw*pp*k*0.5*(1-s)
-                +pp*pw*k*0.5*(1-h*s)
-                +pw*pw*k*0.25*(1-h*s)
-                +pp*(1-k)*1*(1-s)
-                +pw*(1-k)*0.25*(1-h*s)
-            )
+from family_based_model import update_one_generation,calculate_allele_freq,allele_to_genotype_freq
 
-    new_pw =( pw*pp*k*0.5*(1-s)
-            +ww*pp*k*1*(1-s)
-            +pp*pw*k*0.5*(1-h*s)
-            +pw*pw*k*0.5*(1-h*s)
-            +ww*pw*k*0.5*(1-h*s)
-            +pp*ww*k*1*1
-            +pw*ww*k*0.5*1
-            +pw*(1-k)*0.5*(1-h*s)
-            )
 
-    new_ww = (ww*pw*k*0.5*(1-h*s)
-            +ww*ww*k*1*1
-            +ww*(1-k)*1*1
-            )
-    new_total = new_pp+new_pw+new_ww
-    return new_pp/new_total,new_pw/new_total, new_ww/new_total
+sns.set_style("whitegrid")
 
-def calculate_allele_freq(pp,pw,ww):
-    return pp+pw/2,ww+pw/2
 
-def allele_to_genotype_freq(p):
-    return p*p, 2*p*(1-p),(1-p)*(1-p)
-def main():
+
+def trajectory():
     pp,pw,ww = allele_to_genotype_freq(0.5)
     allele_freqs = [0.5]
     for i in range(100):
-        pp,pw,ww =update_one_generation(pp,pw,ww,k=1,s=0,h=0.5)
+        pp,pw,ww =update_one_generation(pp,pw,ww,k=1,s=0.3,h=0.5)
         p,q = calculate_allele_freq(pp,pw,ww)
         allele_freqs.append(p)
-    print(allele_freqs)
+
+
+
+def allele_frequency_change_plot():
+    ks = []
+    ps = []
+    cs = []
+    iteration = 8
+
+    for k in np.linspace(0, 1, num=11):
+        for p in np.linspace(0.01, 0.99, num=100):
+
+            pp,pw,ww = allele_to_genotype_freq(p)
+            for i in range(iteration):
+                pp,pw,ww =update_one_generation(pp,pw,ww,k=k,s=0.35,h=0.5)
+            c_p  = calculate_allele_freq(pp,pw,ww)
+            pp,pw,ww =update_one_generation(pp,pw,ww,k=k,s=0.35,h=0.5)
+            new_p,_ = calculate_allele_freq(pp,pw,ww)
+            ks.append(k)
+            ps.append(c_p)
+            cs.append(new_p - c_p)
+
+    df = pd.DataFrame(list(zip(ks, ps,cs)),
+               columns =['outcrossing rate', 'peelzeel frequency','allele change'])
+
+    sns.lineplot(data=df, x="peelzeel frequency", y="allele change", hue="outcrossing rate")
+    plt.plot([0,1],[0,0])
+    plt.savefig('outcrossing.png')
 
 
 if __name__=='__main__':
-    main()
+    # allele_frequency_change_plot()
+    heatmap()
+    # trajectory()
